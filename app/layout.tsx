@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Markio Studio — AI-Powered Marketing Tools",
+  title: "Markio Studio — AI Business Operating System",
   description:
-    "AI-powered marketing tools for creators, marketers and businesses. Build faster. Market smarter.",
+    "Tell Markio about your business. Build websites, landing pages, funnels, ads, emails, social posts, and your entire marketing system with AI.",
 };
 
 export default function RootLayout({
@@ -28,9 +28,7 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#050816] text-zinc-100">
-        {children}
-      </body>
+      <body className="min-h-full bg-[#09090B] text-white">{children}</body>
     </html>
   );
 }
