@@ -1,16 +1,30 @@
-# 📋 Changelog
+# Markio Changelog
 
-## v0.1
+## Version 0.1
 
-- Initial Landing Page
-- Responsive Navbar
-- Hero Section
-- Premium UI
-- UTM Generator
-- Deployed to Vercel
+Initial product slice.
 
----
+- Homepage
+- Dashboard
+- Business Brain
+- Landing Page
+- Business Report
 
-Next Goal
+## Version 0.2
 
-QR Generator
+Multi-business and web generation expansion.
+
+- Projects
+- Website Generator
+
+## Future versions
+
+Placeholder for upcoming releases (see `product-roadmap.md`).
+
+- Supabase persistence & auth
+- AI Images
+- Publish / domains
+- Brand Kit
+- Ads, Social, Emails
+- CRM
+- Analytics

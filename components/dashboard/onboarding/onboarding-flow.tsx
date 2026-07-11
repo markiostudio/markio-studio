@@ -2,21 +2,19 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, ArrowRight, Bot, X } from "lucide-react";
+import { ArrowRight, Bot, Loader2, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
-  onboardingQuestions,
-  type OnboardingAnswers,
-} from "@/lib/dashboard/onboarding-data";
+  businessBrainToFormValues,
+  EMPTY_BUSINESS_BRAIN,
+  mergeProfileFormValues,
+  type BusinessBrain,
+  type BusinessBrainProfileKey,
+} from "@/lib/dashboard/business-brain";
+import { writeBusinessBrainSnapshot } from "@/lib/dashboard/business-brain-storage";
+import { createAndActivateProject } from "@/lib/dashboard/project-storage";
 import { GradientButton } from "@/components/dashboard/ui/gradient-button";
-import { GenerationScreen } from "./generation-screen";
-
-const EMPTY_ANSWERS: OnboardingAnswers = {
-  businessName: "",
-  whatYouSell: "",
-  customers: "",
-  mainGoal: "",
-};
+import { BusinessBrainConfirmModal } from "./business-brain-confirm-modal";
 
 type OnboardingFlowProps = {
   open: boolean;
@@ -24,24 +22,22 @@ type OnboardingFlowProps = {
   initialPrompt?: string;
 };
 
-type FlowPhase = "questions" | "generating";
+type FlowPhase = "input" | "extracting" | "confirm" | "generating-landing";
 
 export function OnboardingFlow({ open, onClose, initialPrompt }: OnboardingFlowProps) {
   const router = useRouter();
-  const [phase, setPhase] = useState<FlowPhase>("questions");
-  const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState<OnboardingAnswers>(EMPTY_ANSWERS);
-  const [direction, setDirection] = useState(1);
-
-  const currentQuestion = onboardingQuestions[step];
-  const isLastStep = step === onboardingQuestions.length - 1;
-  const currentValue = answers[currentQuestion.id];
+  const [phase, setPhase] = useState<FlowPhase>("input");
+  const [prompt, setPrompt] = useState("");
+  const [businessBrain, setBusinessBrain] = useState<BusinessBrain | null>(null);
+  const [formValues, setFormValues] = useState(businessBrainToFormValues(EMPTY_BUSINESS_BRAIN));
+  const [error, setError] = useState<string | null>(null);
 
   const reset = useCallback(() => {
-    setPhase("questions");
-    setStep(0);
-    setAnswers(EMPTY_ANSWERS);
-    setDirection(1);
+    setPhase("input");
+    setPrompt("");
+    setBusinessBrain(null);
+    setFormValues(businessBrainToFormValues(EMPTY_BUSINESS_BRAIN));
+    setError(null);
   }, []);
 
   useEffect(() => {
@@ -52,10 +48,7 @@ export function OnboardingFlow({ open, onClose, initialPrompt }: OnboardingFlowP
 
   useEffect(() => {
     if (open && initialPrompt?.trim()) {
-      setAnswers((prev) => ({
-        ...prev,
-        whatYouSell: prev.whatYouSell || initialPrompt.trim(),
-      }));
+      setPrompt(initialPrompt.trim());
     }
   }, [open, initialPrompt]);
 
@@ -63,7 +56,7 @@ export function OnboardingFlow({ open, onClose, initialPrompt }: OnboardingFlowP
     if (!open) return;
 
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape" && phase === "questions") {
+      if (e.key === "Escape" && (phase === "input" || phase === "confirm")) {
         onClose();
       }
     }
@@ -77,36 +70,75 @@ export function OnboardingFlow({ open, onClose, initialPrompt }: OnboardingFlowP
     };
   }, [open, phase, onClose]);
 
-  function updateAnswer(value: string) {
-    setAnswers((prev) => ({
-      ...prev,
-      [currentQuestion.id]: value,
-    }));
-  }
+  async function handleExtract() {
+    if (!prompt.trim()) return;
 
-  function handleNext() {
-    if (!currentValue.trim()) return;
+    setError(null);
+    setPhase("extracting");
 
-    if (isLastStep) {
-      setPhase("generating");
-      return;
+    try {
+      const response = await fetch("/api/business-brain", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: prompt.trim() }),
+      });
+
+      const data = (await response.json()) as BusinessBrain | { error?: string };
+
+      if (!response.ok) {
+        throw new Error("error" in data && data.error ? data.error : "Extraction failed.");
+      }
+
+      const extracted = data as BusinessBrain;
+      setBusinessBrain(extracted);
+      setFormValues(businessBrainToFormValues(extracted));
+      setPhase("confirm");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setPhase("input");
     }
-
-    setDirection(1);
-    setStep((prev) => prev + 1);
   }
 
-  function handleBack() {
-    if (step === 0) return;
-    setDirection(-1);
-    setStep((prev) => prev - 1);
+  function handleFormChange(key: BusinessBrainProfileKey, value: string) {
+    setFormValues((prev) => ({ ...prev, [key]: value }));
   }
 
-  function handleGenerationComplete() {
-    onClose();
-    reset();
-    router.push("/business-launch-report");
-    router.refresh();
+  async function handleConfirm() {
+    if (!businessBrain) return;
+
+    const confirmed = mergeProfileFormValues(businessBrain, formValues);
+    setError(null);
+    setPhase("generating-landing");
+
+    try {
+      const response = await fetch("/api/landing-page", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ businessBrain: confirmed }),
+      });
+
+      const data = (await response.json()) as BusinessBrain | { error?: string };
+
+      if (!response.ok) {
+        throw new Error(
+          "error" in data && data.error ? data.error : "Landing page generation failed."
+        );
+      }
+
+      const enrichedBrain = data as BusinessBrain;
+
+      // Always create a new project — never replace an existing business.
+      createAndActivateProject(enrichedBrain);
+      writeBusinessBrainSnapshot(enrichedBrain);
+
+      onClose();
+      reset();
+      router.push("/landing-page-preview");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setPhase("confirm");
+    }
   }
 
   if (!open) return null;
@@ -114,9 +146,9 @@ export function OnboardingFlow({ open, onClose, initialPrompt }: OnboardingFlowP
   return (
     <>
       <AnimatePresence>
-        {phase === "questions" && (
+        {phase === "input" && (
           <motion.div
-            key="modal-backdrop"
+            key="input-backdrop"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -141,9 +173,7 @@ export function OnboardingFlow({ open, onClose, initialPrompt }: OnboardingFlowP
                       <Bot className="h-5 w-5 text-white" />
                     </div>
                     <div>
-                      <p className="text-xs font-medium text-[#A78BFA]">
-                        Question {step + 1} of {onboardingQuestions.length}
-                      </p>
+                      <p className="text-xs font-medium text-[#A78BFA]">Step 1 of 2</p>
                       <h2 className="text-lg font-semibold text-white">Tell us about your business</h2>
                     </div>
                   </div>
@@ -156,76 +186,44 @@ export function OnboardingFlow({ open, onClose, initialPrompt }: OnboardingFlowP
                     <X className="h-4 w-4" />
                   </button>
                 </div>
-
-                <div className="mt-4 flex gap-1.5">
-                  {onboardingQuestions.map((_, index) => (
-                    <div
-                      key={index}
-                      className="h-1 flex-1 overflow-hidden rounded-full bg-white/[0.06]"
-                    >
-                      <motion.div
-                        className="h-full rounded-full bg-gradient-to-r from-[#7C5CFF] to-[#3B82F6]"
-                        initial={false}
-                        animate={{ width: index <= step ? "100%" : "0%" }}
-                        transition={{ duration: 0.35, ease: "easeOut" }}
-                      />
-                    </div>
-                  ))}
-                </div>
               </div>
 
               <div className="relative px-6 py-6">
-                <AnimatePresence mode="wait" custom={direction}>
-                  <motion.div
-                    key={step}
-                    custom={direction}
-                    initial={{ opacity: 0, x: direction * 24 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: direction * -24 }}
-                    transition={{ duration: 0.3, ease: "easeOut" }}
-                  >
-                    <label htmlFor={currentQuestion.id} className="block text-sm font-semibold text-white">
-                      {currentQuestion.label}
-                    </label>
-                    {currentQuestion.helper && (
-                      <p className="mt-1.5 text-xs text-zinc-500">{currentQuestion.helper}</p>
-                    )}
-                    <textarea
-                      id={currentQuestion.id}
-                      value={currentValue}
-                      onChange={(e) => updateAnswer(e.target.value)}
-                      placeholder={currentQuestion.placeholder}
-                      rows={3}
-                      autoFocus
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                          e.preventDefault();
-                          handleNext();
-                        }
-                      }}
-                      className="mt-4 w-full resize-none rounded-xl border border-white/[0.08] bg-[#09090B] px-4 py-3 text-sm text-white placeholder:text-zinc-600 outline-none transition-all duration-300 focus:border-[#7C5CFF]/40 focus:ring-2 focus:ring-[#7C5CFF]/15"
-                    />
-                  </motion.div>
-                </AnimatePresence>
+                <label htmlFor="business-prompt" className="block text-sm font-semibold text-white">
+                  Describe your business
+                </label>
+                <p className="mt-1.5 text-xs text-zinc-500">
+                  One paragraph is enough — Markio will extract the details for you.
+                </p>
+                <textarea
+                  id="business-prompt"
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder="e.g. I own a Japanese restaurant in New York serving authentic ramen to young professionals..."
+                  rows={5}
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      handleExtract();
+                    }
+                  }}
+                  className="mt-4 w-full resize-none rounded-xl border border-white/[0.08] bg-[#09090B] px-4 py-3 text-sm text-white placeholder:text-zinc-600 outline-none transition-all duration-300 focus:border-[#7C5CFF]/40 focus:ring-2 focus:ring-[#7C5CFF]/15"
+                />
+                {error && (
+                  <p className="mt-3 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                    {error}
+                  </p>
+                )}
               </div>
 
-              <div className="flex items-center justify-between gap-3 border-t border-white/[0.08] px-6 py-4">
-                <button
-                  type="button"
-                  onClick={handleBack}
-                  disabled={step === 0}
-                  className="inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium text-zinc-400 transition-colors hover:text-white disabled:pointer-events-none disabled:opacity-30"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Back
-                </button>
-
+              <div className="flex items-center justify-end gap-3 border-t border-white/[0.08] px-6 py-4">
                 <GradientButton
-                  onClick={handleNext}
-                  disabled={!currentValue.trim()}
+                  onClick={handleExtract}
+                  disabled={!prompt.trim()}
                   size="md"
                 >
-                  {isLastStep ? "Generate my business" : "Continue"}
+                  Analyze my business
                   <ArrowRight className="h-4 w-4" />
                 </GradientButton>
               </div>
@@ -235,8 +233,64 @@ export function OnboardingFlow({ open, onClose, initialPrompt }: OnboardingFlowP
       </AnimatePresence>
 
       <AnimatePresence>
-        {phase === "generating" && (
-          <GenerationScreen answers={answers} onComplete={handleGenerationComplete} />
+        {phase === "extracting" && (
+          <motion.div
+            key="extracting-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="flex flex-col items-center rounded-2xl border border-white/[0.1] bg-[#111218] px-10 py-12 shadow-2xl shadow-[#7C5CFF]/10"
+            >
+              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#7C5CFF] to-[#3B82F6]">
+                <Loader2 className="h-7 w-7 animate-spin text-white" />
+              </div>
+              <p className="text-base font-semibold text-white">Analyzing your business...</p>
+              <p className="mt-2 text-sm text-zinc-500">Building your Business Brain</p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {phase === "confirm" && (
+          <BusinessBrainConfirmModal
+            values={formValues}
+            onChange={handleFormChange}
+            onConfirm={handleConfirm}
+            onClose={onClose}
+            error={error}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {phase === "generating-landing" && (
+          <motion.div
+            key="generating-landing-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="flex flex-col items-center rounded-2xl border border-white/[0.1] bg-[#111218] px-10 py-12 shadow-2xl shadow-[#7C5CFF]/10"
+            >
+              <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#7C5CFF] to-[#3B82F6]">
+                <Loader2 className="h-7 w-7 animate-spin text-white" />
+              </div>
+              <p className="text-base font-semibold text-white">Creating your landing page...</p>
+              <p className="mt-2 text-sm text-zinc-500">AI is writing your headline, services, and CTA</p>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </>

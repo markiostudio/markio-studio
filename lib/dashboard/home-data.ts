@@ -1,3 +1,5 @@
+import { DEFAULT_BUSINESS_BRAIN } from "@/lib/dashboard/business-brain";
+
 export type BusinessProgressStep = {
   id: string;
   label: string;
@@ -8,8 +10,8 @@ export type BusinessProgressStep = {
 };
 
 export const demoBusiness = {
-  name: "GlowFit Studio",
-  type: "Online fitness coaching",
+  name: DEFAULT_BUSINESS_BRAIN.business.name,
+  type: DEFAULT_BUSINESS_BRAIN.business.industry,
   owner: "Sarah",
 };
 
@@ -97,7 +99,7 @@ export type DemoAsset = {
 export const demoAssets: DemoAsset[] = [
   {
     id: "1",
-    title: "GlowFit Coaching Page",
+    title: `${DEFAULT_BUSINESS_BRAIN.business.name} Coaching Page`,
     type: "Landing Page",
     status: "Live",
     updated: "2 hours ago",

@@ -11,13 +11,7 @@ import {
   Share2,
   Upload,
 } from "lucide-react";
-
-export type LaunchReportBusiness = {
-  name: string;
-  type: string;
-  goal: string;
-  healthScore: number;
-};
+import { DEFAULT_BUSINESS_BRAIN } from "@/lib/dashboard/business-brain";
 
 export type GeneratedAsset = {
   id: string;
@@ -39,13 +33,7 @@ export type AIRecommendation = {
   accent: string;
 };
 
-export const launchReportBusiness: LaunchReportBusiness = {
-  name: "GlowFit Studio",
-  type: "Online Fitness Coaching",
-  goal: "Generate more leads",
-  healthScore: 92,
-};
-
+/** Asset card templates — personalized copy comes from Business Brain. */
 export const generatedAssets: GeneratedAsset[] = [
   {
     id: "website",
@@ -72,7 +60,7 @@ export const generatedAssets: GeneratedAsset[] = [
     emoji: "🎨",
     title: "Brand Kit",
     status: "Ready",
-    description: "Logo, color palette, fonts, and brand voice tailored to your fitness coaching business.",
+    description: "Logo, color palette, fonts, and brand voice tailored to your business.",
     primaryAction: "View",
     secondaryAction: "Customize",
     preview: "brand",
@@ -109,6 +97,7 @@ export const generatedAssets: GeneratedAsset[] = [
   },
 ];
 
+/** @deprecated Prefer getIndustryRecommendations(brain.business.industry) */
 export const aiRecommendations: AIRecommendation[] = [
   {
     id: "whatsapp",
@@ -161,3 +150,6 @@ export const assetPreviewIcons = {
   email: Mail,
   fallback: Image,
 };
+
+/** Kept for any remaining imports that expected a demo business name. */
+export const launchReportBusinessName = DEFAULT_BUSINESS_BRAIN.business.name;

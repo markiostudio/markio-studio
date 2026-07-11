@@ -1,3 +1,6 @@
+"use client";
+
+import { motion } from "framer-motion";
 import type { AIRecommendation } from "@/lib/dashboard/launch-report-data";
 import { MotionStaggerItem } from "@/components/dashboard/ui/motion-primitives";
 
@@ -7,7 +10,12 @@ type AIRecommendationsPanelProps = {
 
 export function AIRecommendationsPanel({ recommendations }: AIRecommendationsPanelProps) {
   return (
-    <aside className="space-y-4">
+    <motion.aside
+      initial={{ opacity: 0, x: 16 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.5, delay: 0.2 }}
+      className="space-y-4"
+    >
       <MotionStaggerItem
         index={0}
         className="rounded-2xl border border-white/[0.08] bg-[#111218] p-5"
@@ -53,6 +61,6 @@ export function AIRecommendationsPanel({ recommendations }: AIRecommendationsPan
           );
         })}
       </div>
-    </aside>
+    </motion.aside>
   );
 }

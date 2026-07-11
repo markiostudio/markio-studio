@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { demoAssets, type DemoAsset } from "@/lib/dashboard/home-data";
+import { demoAssets, demoBusiness, type DemoAsset } from "@/lib/dashboard/home-data";
 import { LandingPageMockup } from "./mockups/landing-page-mockup";
 import { AdMockup } from "./mockups/ad-mockup";
 import { EmailMockup } from "./mockups/email-mockup";
@@ -30,7 +30,7 @@ export function DemoShowcase() {
     <section className="mb-8">
       <SectionHeader
         title="What Markio created for you"
-        description="Real assets from your GlowFit Studio demo project"
+        description={`Real assets from your ${demoBusiness.name} demo project`}
         action={{ label: "View all projects", href: "/projects" }}
       />
 

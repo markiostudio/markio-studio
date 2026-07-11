@@ -4,16 +4,16 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Bot, Check, Loader2, Sparkles } from "lucide-react";
 import { generationSteps } from "@/lib/dashboard/onboarding-data";
-import type { OnboardingAnswers } from "@/lib/dashboard/onboarding-data";
+import type { BusinessBrain } from "@/lib/dashboard/business-brain";
 
 type GenerationScreenProps = {
-  answers: OnboardingAnswers;
+  businessBrain: BusinessBrain;
   onComplete: () => void;
 };
 
 const TOTAL_DURATION_MS = generationSteps.reduce((sum, step) => sum + step.durationMs, 0);
 
-export function GenerationScreen({ answers, onComplete }: GenerationScreenProps) {
+export function GenerationScreen({ businessBrain, onComplete }: GenerationScreenProps) {
   const [progress, setProgress] = useState(0);
   const [completedSteps, setCompletedSteps] = useState<string[]>([]);
   const [activeStepId, setActiveStepId] = useState(generationSteps[0]?.id ?? "");
@@ -72,7 +72,7 @@ export function GenerationScreen({ answers, onComplete }: GenerationScreenProps)
           <h2 className="text-2xl font-bold text-white">Building your business</h2>
           <p className="mt-2 text-sm text-zinc-400">
             Markio is creating your marketing system for{" "}
-            <span className="text-[#A78BFA]">{answers.businessName || "your business"}</span>
+            <span className="text-[#A78BFA]">{businessBrain.business.name || "your business"}</span>
           </p>
         </motion.div>
 

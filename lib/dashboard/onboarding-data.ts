@@ -1,3 +1,5 @@
+import { DEFAULT_BUSINESS_BRAIN } from "@/lib/dashboard/business-brain";
+
 export type OnboardingAnswers = {
   businessName: string;
   whatYouSell: string;
@@ -16,25 +18,25 @@ export const onboardingQuestions: OnboardingQuestion[] = [
   {
     id: "businessName",
     label: "Business Name",
-    placeholder: "e.g. GlowFit Studio",
+    placeholder: `e.g. ${DEFAULT_BUSINESS_BRAIN.business.name}`,
     helper: "This is how Markio will refer to your business.",
   },
   {
     id: "whatYouSell",
     label: "What do you sell?",
-    placeholder: "e.g. Online fitness coaching programs for busy professionals",
+    placeholder: `e.g. ${DEFAULT_BUSINESS_BRAIN.business.industry} programs for busy professionals`,
     helper: "Describe your product or service in plain language.",
   },
   {
     id: "customers",
     label: "Who are your customers?",
-    placeholder: "e.g. Working adults aged 25–45 who want to get fit at home",
+    placeholder: `e.g. ${DEFAULT_BUSINESS_BRAIN.business.audience}`,
     helper: "Think about who buys from you today — or who you want to reach.",
   },
   {
     id: "mainGoal",
     label: "What is your main goal?",
-    placeholder: "e.g. Get more leads and sign up 20 new clients this month",
+    placeholder: `e.g. ${DEFAULT_BUSINESS_BRAIN.business.goal}`,
     helper: "What result do you want Markio to help you achieve?",
   },
 ];
@@ -55,7 +57,7 @@ export const generationSteps: GenerationStep[] = [
 ];
 
 export const mockOnboardingResult = {
-  businessName: "GlowFit Studio",
+  businessName: DEFAULT_BUSINESS_BRAIN.business.name,
   assetsCreated: 8,
   estimatedTimeSaved: "12 hours",
 };
